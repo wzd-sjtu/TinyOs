@@ -1,0 +1,22 @@
+# setting Memory for Bochs
+megs:32
+
+# setting BIOS and VGA BIOS
+romimage:file=/home/wzd/bochs/share/bochs/BIOS-bochs-latest
+vgaromimage:file=/home/wzd/bochs/share/bochs/VGABIOS-lgpl-latest
+
+# ignore soft disk, we choose disk
+boot:disk
+
+# log information
+log:bochs.out
+
+# close mouse and open keyboard
+mouse:enabled=0
+keyboard:keymap=/home/wzd/bochs/share/bochs/keymaps/x11-pc-us.map
+
+# disk settings
+ata0:enabled=1,ioaddr1=0x1f0,ioaddr2=0x3f0,irq=14
+ata0-master: type=disk, path="hd60M.img", mode=flat
+
+# ignore gdb inforamtion
