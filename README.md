@@ -1,5 +1,5 @@
 # TinyOs
-A TinyOs in bochs C
+A TinyOs in bochs
 
 This project is from book 《操作系统真相还原》
 
