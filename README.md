@@ -8,3 +8,5 @@ Written in C and a little assembly language?
 Written Order is below:
 
 BIOS->MBR->Loader->true Computer System
+
+now i am near the load kernal, i haven't begin write kernal in C
