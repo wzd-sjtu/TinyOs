@@ -53,3 +53,4 @@ PG_US_U equ 100b ; 用户内容
 KERNAL_START_SECTOR equ 0x9
 KERNAL_BIN_BASE_ADDR equ 0x70000 ; also in true mode 
 KERNAL_ENTER_POINT equ 0xc0001500
+PT_NULL equ 0

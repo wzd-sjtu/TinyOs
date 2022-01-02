@@ -1,5 +1,6 @@
 ; 代码功能：在屏幕上打印 1 MBR ，背景色为黑色，前景色为绿色
 ; 主引导程序MBR
+; segment reg initial and sp pointer initial
 SECTION MBR vstart=0x7c00
     mov ax,cs
     mov ds,ax

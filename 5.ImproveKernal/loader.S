@@ -7,6 +7,7 @@ jmp loader_start
 ; GDT是为了内核模式寻址才设立的数据结构，这点要谨记
 ; 定义全局描述符表GDT dd伪指令，define double-word，定义双字变量
 ; 小端字节序，所以选择前面写低位，后面写高位
+gdt_addr:
 GDT_BASE:   dd 0x00000000 ;16位地址
             dd 0x00000000
 CODE_DESC:  dd 0x0000FFFF
@@ -81,6 +82,7 @@ p_mode_start:
         mov eax, KERNAL_START_SECTOR
         mov ebx, KERNAL_BIN_BASE_ADDR
 
+        ; load the kernal bin code, which is somehow reasonable
         mov ecx, 200
         call rd_disk_m_32
 
@@ -177,6 +179,7 @@ setup_page:
 ; mov ecx, 200
 ; call rd_disk_m_32
 
+; these codes seem wrong?
 rd_disk_m_32:
     mov esi,eax ;
     mov edi,ecx
@@ -209,7 +212,7 @@ rd_disk_m_32:
     ; 0x1f7端口写入读命令，0x20
     mov dx,0x1f7
     mov al,0x20 
-    out dx,al 
+    out dx,al
 
     ;检测硬盘状态
 .not_ready:
@@ -220,18 +223,18 @@ rd_disk_m_32:
     jnz .not_ready ; 未准备好，循环等待
 
     ; 从0x1f0读取数据
-    mov eax,edi ; 扇区数
+    mov ax,di ; 扇区数
     mov dx,256
     mul dx
-    mov ecx,eax 
+    mov cx,ax 
 
     ; 每次读入16byte，则可以计算出需要的空间
 
-    mov dx,0x1f0 
+    mov dx,0x1f
 
 .go_on_read:
-    in eax,dx 
-    mov [ebx],eax ; 向内存写入数据
+    in ax,dx
+    mov [ebx],ax ; 向内存写入数据
     add ebx,2
     loop .go_on_read
     ret
@@ -243,24 +246,26 @@ kernal_init:
         xor ecx, ecx 
         xor edx, edx 
 
+        ; what is the simulate thing of this computer?
+
         mov dx, [KERNAL_BIN_BASE_ADDR + 42] ;the size of program header
         mov ebx, [KERNAL_BIN_BASE_ADDR + 28] ;e_phoff
         
         add ebx, KERNAL_BIN_BASE_ADDR
         mov cx, [KERNAL_BIN_BASE_ADDR + 44] ;e_phnum how many program headers?
-
 .each_segment:
-        cmp byte [ebx + 0], .PT_NULL
+        cmp byte [ebx + 0], PT_NULL
         je .PT_NULL
 
         push dword [ebx+16] ;p_filesizes
-        push dword [ebx+16]
+
         mov eax, [ebx+4]
         add eax, KERNAL_BIN_BASE_ADDR
         push eax                ;src 
         push dword [ebx+8]      ;dst 
 
-        call mem_cpy 
+        call mem_cpy
+        add esp, 12 ;clear all variables in stack
 .PT_NULL:
         add ebx, edx
         loop .each_segment
@@ -272,11 +277,13 @@ mem_cpy:
         mov ebp, esp 
         push ecx 
 
-        mov edi, [ebp+8]
-        mov esi, [ebp+12]
-        mov ecx, [ebp+16]
+        mov edi, [ebp+8] ;dst
+        mov esi, [ebp+12] ;src
+        mov ecx, [ebp+16] ;size
         rep movsb
 
         pop ecx 
         pop ebp
         ret 
+
+;because page table map is wrong, we can't get enough data here.dam!

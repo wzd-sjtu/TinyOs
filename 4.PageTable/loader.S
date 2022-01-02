@@ -1,19 +1,19 @@
 %include "boot.inc"
-
 section loader vstart=LOADER_BASE_ADDR ;加载地址已经固定为0x900
 LOADER_STACK_TOP equ LOADER_BASE_ADDR
-jmp loader_start 
-
+jmp loader_start
 ; GDT是为了内核模式寻址才设立的数据结构，这点要谨记
 ; 定义全局描述符表GDT dd伪指令，define double-word，定义双字变量
 ; 小端字节序，所以选择前面写低位，后面写高位
+
+gdt_addr:
 GDT_BASE:   dd 0x00000000 ;16位地址
             dd 0x00000000
 CODE_DESC:  dd 0x0000FFFF
             dd DESC_CODE_HIGH4
 DATA_STACK_DESC: dd 0x0000FFFF
                  dd DESC_DATA_HIGH4
-VIDEO_DESC: dd 0x80000007;limit=(0xbffff-0xb80000)/4k=0x7
+VIDEO_DESC: dd 0x80000008;limit=(0xbffff-0xb80000)/4k=0x7
             dd DESC_VIDEO_HIGH4 ; 4代表4个byte，32位
 
 GDT_SIZE equ $-GDT_BASE
@@ -33,7 +33,6 @@ loadermsg db '2 loader in real.'
 
 ; gs寄存器在前面已经被设置过了
 ; 也就是在主引导程序中被设置过
-
 ; 正式开始程序引入
 loader_start:
 
@@ -112,9 +111,9 @@ p_mode_start:
 
         jmp SELECTOR_CODE:enter_kernal
 enter_kernal:
-        call kernal_init
-        mov esp, 0xc009f000
-        jmp KERNAL_ENTER_POINT
+        ;call kernal_init
+        ;mov esp, 0xc009f000
+        ;jmp KERNAL_ENTER_POINT
         
         mov byte [gs:160], 'V'
 
@@ -163,11 +162,6 @@ setup_page:
         mov ebx, PAGE_DIR_TABLE_POS
         mov ecx, 254
         mov esi, 769
-.create_kernal_pde:
-        mov [ebx+esi*4], eax 
-        inc esi 
-        add eax, 0x1000
-        loop .create_kernal_pde
         ret
 
 
@@ -179,7 +173,7 @@ setup_page:
 
 rd_disk_m_32:
     mov esi,eax ;
-    mov edi,ecx
+    mov di,cx
 
     ; 设置要读取的扇区数
     mov dx,0x1f2 ; primary通道sector count寄存器
@@ -220,18 +214,18 @@ rd_disk_m_32:
     jnz .not_ready ; 未准备好，循环等待
 
     ; 从0x1f0读取数据
-    mov eax,edi ; 扇区数
+    mov ax,di ; 扇区数
     mov dx,256
     mul dx
-    mov ecx,eax 
+    mov cx,ax
 
     ; 每次读入16byte，则可以计算出需要的空间
 
     mov dx,0x1f0 
 
 .go_on_read:
-    in eax,dx 
-    mov [ebx],eax ; 向内存写入数据
+    in ax,dx
+    mov [ebx],ax ; 向内存写入数据
     add ebx,2
     loop .go_on_read
     ret

@@ -9,18 +9,18 @@ jmp loader_start
 ; 小端字节序，所以选择前面写低位，后面写高位
 GDT_BASE:   dd 0x00000000 ;16位地址
             dd 0x00000000
-CODE_DESC:  dd 0x0000FFFF
-            dd DESC_CODE_HIGH4
+CODE_DESC:  dd 0x0000FFFF  ; from 31-0 bits location
+            dd DESC_CODE_HIGH4 ; from 63-32 bits location 
 DATA_STACK_DESC: dd 0x0000FFFF
                  dd DESC_DATA_HIGH4
-VIDEO_DESC: dd 0x80000007;limit=(0xbffff-0xb80000)/4k=0x7
+VIDEO_DESC: dd 0x80000007;limit=(0xbffff-0xb80000)/4k=0x7 show memory GDT element
             dd DESC_VIDEO_HIGH4 ; 4代表4个byte，32位
 
 GDT_SIZE equ $-GDT_BASE
 GDT_LIMIT equ GDT_SIZE-1
 times 60 dq 0 ; 保存60*8字节的空间，来存储多余的GDT表项，每一个描述符表项大小为8字节
 
-; 构建选择子，看的太快了，整得人有点懵逼
+; selector is used to select the basic location 
 SELECTOR_CODE equ (0x0001<<3) + TI_GDT + RPL0
 SELECTOR_DATA equ (0x0002<<3) + TI_GDT + RPL0
 SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0 ;RPL特权级为0，使用TI_GDT内存描述符表，自动对齐成16位
@@ -61,7 +61,7 @@ loader_start:
         or eax, 0x00000001
         mov cr0, eax 
 
-        jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线
+        jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线,delete all things in data?
 
 [bits 32] 
 ; 保护模式程序
@@ -75,5 +75,5 @@ p_mode_start:
         mov gs, ax 
 
         mov byte [gs:160], 'P'
-
+        ; the code of computer system should be here.
         jmp $ ; 程序悬停
