@@ -1,8 +1,5 @@
    %include "boot.inc"
    section loader vstart=LOADER_BASE_ADDR
-
-   LOADER_STACK_TOP equ LOADER_BASE_ADDR
-   
 ;构建gdt及其内部的描述符
    GDT_BASE:   dd    0x00000000 
 	       dd    0x00000000
@@ -33,9 +30,12 @@
    gdt_ptr  dw  GDT_LIMIT 
 	    dd  GDT_BASE
 
-loader_start:
+   ;人工对齐:total_mem_bytes4字节+gdt_ptr6字节+ards_buf244字节+ards_nr2,共256字节
+   ards_buf times 244 db 0
+   ards_nr dw 0		      ;用于记录ards结构体数量
 
-
+   loader_start:
+   
 ;-----------------   准备进入保护模式   -------------------
 ;1 打开A20
 ;2 加载gdt

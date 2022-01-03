@@ -11,14 +11,15 @@ loader.bin:loader.S
 	nasm -I include/ -o build/loader.bin loader.S
 mbr.bin:mbr.S 
 	nasm -I include/ -o build/mbr.bin mbr.S
+# print.o:lib/kernel/print.S lib/kernel/print.h lib/stdint.h
+#	nasm -f elf64 -o build/print.o lib/kernel/print.S
+main.o:kernal/main.c lib/kernel/print.h
+	gcc -ms32 -I lib/kernel/ -c -o build/main.o kernal/main.c
 
-print.o:lib/kernel/print.S
-	nasm -f elf32 -o build/print.o lib/kernel/print.S
-main.o:kernal/main.c lib/kernel/print.h print.o
-	gcc -I lib/kernel/ -m32 build/print.o kernal/main.c -c -o build/main.o
+kernal.bin:main.o
+	ld -m elf32_i386 -Ttext 0xc0001500 -e main -o build/kernal.bin build/main.o
 
-kernal.bin:main.o print.o
-	ld -m elf_i386 -Ttext 0xc0001500 -e main -o build/kernal.bin build/print.o build/main.o
+
 all:loader.bin mbr.bin kernal.bin
 	dd if=./build/loader.bin of=../../bochs/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	dd if=./build/mbr.bin of=../../bochs/hd60M.img bs=512 count=1 conv=notrunc
@@ -26,4 +27,3 @@ all:loader.bin mbr.bin kernal.bin
 	echo "write successfully!"
 clean:
 	rm build/*.o
-	rm build/*.bin

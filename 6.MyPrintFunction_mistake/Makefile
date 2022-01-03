@@ -7,18 +7,19 @@
 # dd if=./mbr.bin of=./hd60M.img bs=512 count=1 conv=notrunc
 # dd if=kernal.bin of=./hd60M.img bs=512 count=200  seek=9 conv=notrunc
 
-loader.bin:loader.S 
-	nasm -I include/ -o build/loader.bin loader.S
-mbr.bin:mbr.S 
-	nasm -I include/ -o build/mbr.bin mbr.S
+loader.bin:boot/loader.S 
+	nasm -I boot/include/ -o build/loader.bin boot/loader.S
+mbr.bin:boot/mbr.S
+	nasm -I boot/include/ -o build/mbr.bin boot/mbr.S
 
 print.o:lib/kernel/print.S
 	nasm -f elf32 -o build/print.o lib/kernel/print.S
-main.o:kernal/main.c lib/kernel/print.h print.o
-	gcc -I lib/kernel/ -m32 build/print.o kernal/main.c -c -o build/main.o
+main.o:kernal/main.c lib/kernel/print.h
+	gcc -I lib/kernel/ -m32 kernal/main.c -c -o build/main.o
 
 kernal.bin:main.o print.o
-	ld -m elf_i386 -Ttext 0xc0001500 -e main -o build/kernal.bin build/print.o build/main.o
+	ld -m elf_i386 -Ttext 0xc0001500 -e main -o build/kernal.bin build/main.o build/print.o
+
 all:loader.bin mbr.bin kernal.bin
 	dd if=./build/loader.bin of=../../bochs/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	dd if=./build/mbr.bin of=../../bochs/hd60M.img bs=512 count=1 conv=notrunc
