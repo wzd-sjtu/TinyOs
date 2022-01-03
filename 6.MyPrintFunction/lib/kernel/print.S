@@ -5,6 +5,26 @@ SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0
 [bits 32]
 section .text
 
+; put a str into the screen
+global put_str
+put_str:
+    push ebx
+    push ecx
+    xor ecx, ecx
+    mov ebx, [esp+12]
+.goon:
+    mov cl, [ebx]
+    cmp cl, 0
+    jz .str_over
+    push ecx ; for put_char deliver parameters
+    call put_char
+    add esp, 4
+    inc ebx
+    jmp .goon
+.str_over:
+    pop ecx
+    pop ebx
+    ret
 ; put a char in stack into the screen
 global put_char
 put_char:
@@ -110,4 +130,3 @@ put_char:
 .put_char_done:
     popad
     ret
-        
