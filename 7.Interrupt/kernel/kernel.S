@@ -3,6 +3,7 @@
 %define ZERO push 0
 
 extern put_str
+extern idt_table ; table in interrupt.c  for idt's process
 
 section .data
 intr_str db "interrupt occur!", 0xa, 0
@@ -18,15 +19,36 @@ intr%1entry:
     call put_str
     add esp, 4
 
+    push ds
+    push es
+    push fs 
+    push gs
+    pushad ; EAX ECX EDX EBX ESP EBP ESI EDI
+
     mov al, 0x20
     out 0xa0, al
     out 0x20, al
 
-    add esp, 4
-    iret
+    push %1
+
+    call [idt_table + %1*4]
+    jmp intr_exit
+
 section .data
     dd intr%1entry
 %endmacro
+
+section .text
+global intr_exit
+intr_exit:
+    add esp, 4 ;what is this thing for? for push %1
+    popad
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 4 ; jump error code
+    iretd
 
 ; 33 ivt program
 VECTOR 0X00, ZERO
