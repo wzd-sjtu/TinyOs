@@ -67,8 +67,8 @@ static void general_intr_handler(uint8_t vec_nr) {
         return;  // two interrupt vector which don't need to consider
     }
     put_str("int vector : 0x2");
-    char tmp = vec_nr + 'a';
-    put_char(tmp);
+    char tmp = (char)(vec_nr + 'a');
+    // put_char(tmp);
     // put_int(vec_nr);
     put_char('\n');
 }
