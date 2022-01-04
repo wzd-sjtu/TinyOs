@@ -124,6 +124,7 @@ void idt_init() {
 }
 
 // open the interrupt
+// all these functions are used for open or close interrupt
 enum intr_status intr_disable(void) {
     enum intr_status old_status;
     if(INTR_ON == intr_get_status()) {

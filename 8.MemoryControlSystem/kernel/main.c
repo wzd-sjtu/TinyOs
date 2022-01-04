@@ -25,6 +25,11 @@ int main(void) {
 
     // ASSERT(1==2);
     // asm volatile("sti"); // temporaryly open the interrupt
+
+    put_str("\nget kernel pages!\n");
+    void* addr = get_kernel_pages(3);
+    put_int((uint32_t)addr);
+    put_str("\nget kernel pages done!\n");
     while(1);
     return 0;
 }
