@@ -9,7 +9,7 @@ void bitmap_init(struct bitmap* btmp) {
     memset(btmp->bits, 0, btmp->btmp_bytes_len); // all set to zero
 }
 // judge whether the idc bit is 0 or 1
-bool bitmap_scan_test(struct bitmap* btmp, uint32_t bit_idx) {
+int bitmap_scan_test(struct bitmap* btmp, uint32_t bit_idx) {
     uint32_t byte_idx = bit_idx / 8;
     uint32_t bit_odd = bit_idx % 8;
     return (btmp->bits[byte_idx] & (BIT_MAP_MASK << bit_odd));
@@ -30,7 +30,7 @@ int bitmap_scan(struct bitmap* btmp, uint32_t cnt) {
 
     int idx_bit = 0;
 
-    while((uint8_t)(BIT_MAP_MASK << idx_bit) & btmp->btmp_bits[idx_byte]) {
+    while((uint8_t)(BIT_MAP_MASK << idx_bit) & btmp->bits[idx_byte]) {
         idx_bit++;
     }
     int bit_idx_start = idx_byte*8 + idx_bit;

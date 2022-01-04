@@ -1,6 +1,8 @@
 #include "print.h"
 #include "init.h"
 #include "debug.h"
+#include "memory.h"
+
 int main(void) {
     
     /*
@@ -20,7 +22,8 @@ int main(void) {
 
     put_str("wzd is handsome!\nwzd is also beautiful!\n");
     init_all();
-    ASSERT(1==2);
+
+    // ASSERT(1==2);
     // asm volatile("sti"); // temporaryly open the interrupt
     while(1);
     return 0;

@@ -45,7 +45,7 @@ SECTION MBR vstart=0x7c00
     mov cx,4 ; loader程序超过了512byte，为了避免将来再次修改，修改为4个扇区
     call rd_disk_m_16 ; 从磁盘读出内容，从而写入内存
 
-    jmp LOADER_BASE_ADDR ; 写入完成后，直接跳转到目标地址
+    jmp LOADER_BASE_ADDR + 0x300; 写入完成后，直接跳转到目标地址
     
 rd_disk_m_16:
     mov esi,eax ; 备份LBA号

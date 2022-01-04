@@ -1,10 +1,14 @@
 #include "string.h"
 #include "global.h"
 #include "debug.h"
+#include "stdint.h"
+
+
+#define NULL 0
 
 void memset(void* dst_, uint8_t value, uint32_t size) {
     ASSERT(dst_ != NULL);
-    uint8_t* dst = (uint_8*)dst_;
+    uint8_t* dst = (uint8_t*)dst_;
     while(size-- >0)
         *dst++ = value; // use value to pave the space
 }
@@ -85,7 +89,7 @@ char* strcat(char* dst_, const char* src_) {
     char* str = dst_;
     while(*str++);
     --str;
-    while((*str++ = *src++));
+    while((*str++ = *src_++));
     return dst_;
 }
 

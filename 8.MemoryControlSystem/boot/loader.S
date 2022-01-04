@@ -1,293 +1,305 @@
-%include "boot.inc"
+   %include "boot.inc"
+   section loader vstart=LOADER_BASE_ADDR
+;构建gdt及其内部的描述符
+   GDT_BASE:   dd    0x00000000 
+	       dd    0x00000000
 
-section loader vstart=LOADER_BASE_ADDR ;加载地址已经固定为0x900
-jmp loader_start ; 首先需要jump到指定行
-LOADER_STACK_TOP equ LOADER_BASE_ADDR
+   CODE_DESC:  dd    0x0000FFFF 
+	       dd    DESC_CODE_HIGH4
 
-; GDT是为了内核模式寻址才设立的数据结构，这点要谨记
-; 定义全局描述符表GDT dd伪指令，define double-word，定义双字变量
-; 小端字节序，所以选择前面写低位，后面写高位
-gdt_addr:
-GDT_BASE:   dd 0x00000000 ;16位地址
-            dd 0x00000000
-CODE_DESC:  dd 0x0000FFFF
-            dd DESC_CODE_HIGH4
-DATA_STACK_DESC: dd 0x0000FFFF
-                 dd DESC_DATA_HIGH4
-VIDEO_DESC: dd 0x80000007;limit=(0xbffff-0xb80000)/4k=0x7
-            dd DESC_VIDEO_HIGH4 ; 4代表4个byte，32位
+   DATA_STACK_DESC:  dd    0x0000FFFF
+		     dd    DESC_DATA_HIGH4
 
-GDT_SIZE equ $-GDT_BASE
-GDT_LIMIT equ GDT_SIZE-1
-times 60 dq 0 ; 保存60*8字节的空间，来存储多余的GDT表项，每一个描述符表项大小为8字节
+   VIDEO_DESC: dd    0x80000007	       ; limit=(0xbffff-0xb8000)/4k=0x7
+	       dd    DESC_VIDEO_HIGH4  ; 此时dpl为0
 
-; 构建选择子，看的太快了，整得人有点懵逼
-SELECTOR_CODE equ (0x0001<<3) + TI_GDT + RPL0
-SELECTOR_DATA equ (0x0002<<3) + TI_GDT + RPL0
-SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0 ;RPL特权级为0，使用TI_GDT内存描述符表，自动对齐成16位
+   GDT_SIZE   equ   $ - GDT_BASE
+   GDT_LIMIT   equ   GDT_SIZE -	1 
+   times 60 dq 0					 ; 此处预留60个描述符的空位(slot)
+   SELECTOR_CODE equ (0x0001<<3) + TI_GDT + RPL0         ; 相当于(CODE_DESC - GDT_BASE)/8 + TI_GDT + RPL0
+   SELECTOR_DATA equ (0x0002<<3) + TI_GDT + RPL0	 ; 同上
+   SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0	 ; 同上 
 
-; GDT全局选择符表指针，专门用来把数据加载到内存的，提供给lgdt加载GDT到gdtr寄存器
-gdt_ptr dw GDT_LIMIT
-        dd GDT_BASE
+   ; total_mem_bytes用于保存内存容量,以字节为单位,此位置比较好记。
+   ; 当前偏移loader.bin文件头0x200字节,loader.bin的加载地址是0x900,
+   ; 故total_mem_bytes内存中的地址是0xb00.将来在内核中咱们会引用此地址
+   total_mem_bytes dd 0					 
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-loadermsg db '2 loader in real.'
+   ;以下是定义gdt的指针，前2字节是gdt界限，后4字节是gdt起始地址
+   gdt_ptr  dw  GDT_LIMIT 
+	    dd  GDT_BASE
 
-; gs寄存器在前面已经被设置过了
-; 也就是在主引导程序中被设置过
+   ;人工对齐:total_mem_bytes4字节+gdt_ptr6字节+ards_buf244字节+ards_nr2,共256字节
+   ards_buf times 244 db 0
+   ards_nr dw 0		      ;用于记录ards结构体数量
 
-; 正式开始程序引入
-loader_start:
+   loader_start:
+   
+;-----------------   准备进入保护模式   -------------------
+;1 打开A20
+;2 加载gdt
+;3 将cr0的pe位置1
 
-        ; 向实模式告别，在实模式下打印一个字符串
-        mov sp, LOADER_BASE_ADDR
-        mov bp, loadermsg ; ES:SP->字符串地址
-        mov cx, 17
-        mov ax, 0x1301
-        mov bx, 0x001f
-        mov dx, 0x1800
-        int 0x10 ; BIOS中断向屏幕写入信息，表示即将进入保护模式
+   ;-----------------  打开A20  ----------------
+   in al,0x92
+   or al,0000_0010B
+   out 0x92,al
 
-        ; 准备进入保护模式
+   ;-----------------  加载GDT  ----------------
+   lgdt [gdt_ptr]
 
-        ; 打开A20地址总线
-        in al, 0x92
-        or al, 0000_0010B
-        out 0x92,al 
+   ;-----------------  cr0第0位置1  ----------------
+   mov eax, cr0
+   or eax, 0x00000001
+   mov cr0, eax
 
-        ; 加载GDT
-        lgdt [gdt_ptr]
+   jmp dword SELECTOR_CODE:p_mode_start	     ; 刷新流水线，避免分支预测的影响,这种cpu优化策略，最怕jmp跳转，
+					     ; 这将导致之前做的预测失效，从而起到了刷新的作用。
+.error_hlt:		      ;出错则挂起
+   hlt
 
-        ; CR0第0位置置为1
-        mov eax, cr0 
-        or eax, 0x00000001
-        mov cr0, eax 
-
-        jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线
-
-[bits 32] 
-; 保护模式程序
+[bits 32]
 p_mode_start:
-        mov ax, SELECTOR_DATA
-        mov ds, ax
-        mov es, ax
-        mov ss, ax
-        mov esp,LOADER_STACK_TOP
-        mov ax, SELECTOR_VIDEO ; 之前就是这个VIDEO有问题，所以会导致打印出问题，书本中没有将地址完全写对
-        mov gs, ax 
+   mov ax, SELECTOR_DATA
+   mov ds, ax
+   mov es, ax
+   mov ss, ax
+   mov esp,LOADER_STACK_TOP
+   mov ax, SELECTOR_VIDEO
+   mov gs, ax
 
-        mov byte [gs:320], 'P'
-        
+; -------------------------   加载kernel  ----------------------
+   mov eax, KERNEL_START_SECTOR        ; kernel.bin所在的扇区号
+   mov ebx, KERNEL_BIN_BASE_ADDR       ; 从磁盘读出后，写入到ebx指定的地址
+   mov ecx, 200			       ; 读入的扇区数
 
-        ; load kernal thing, which is kernal.bin document
-        mov eax, KERNEL_START_SECTOR
-        mov ebx, KERNEL_BIN_BASE_ADDR
+   call rd_disk_m_32
 
-        ; load the kernal bin code, which is somehow reasonable
-        mov ecx, 200
-        call rd_disk_m_32
+   ; 创建页目录及页表并初始化页内存位图
+   call setup_page
 
-        ; begin to init the kernal, which is same to copy_by_copy
-        
+   ;要将描述符表地址及偏移量写入内存gdt_ptr,一会用新地址重新加载
+   sgdt [gdt_ptr]	      ; 存储到原来gdt所有的位置
 
-        ; 下面正式开启分页机制，现在头有点晕了，我裂开
-        call setup_page
-        sgdt [gdt_ptr]
-        
-        mov ebx, [gdt_ptr+2]
-        or dword [ebx+0x18+4], 0xc0000000
+   ;将gdt描述符中视频段描述符中的段基址+0xc0000000
+   mov ebx, [gdt_ptr + 2]  
+   or dword [ebx + 0x18 + 4], 0xc0000000      ;视频段是第3个段描述符,每个描述符是8字节,故0x18。
+					      ;段描述符的高4字节的最高位是段基址的31~24位
 
-        ; 经过固定操作，我们正式开启了分页，此时的地址全部是虚拟地址
-        ; 当然，这里没有涉及页表替换等算法，具体如何替换可见操作系统课程书籍，不需要在此处考虑！
-        ; the initial of selector
-        add dword [gdt_ptr+2], 0xc0000000
+   ;将gdt的基址加上0xc0000000使其成为内核所在的高地址
+   add dword [gdt_ptr + 2], 0xc0000000
 
-        add esp, 0xc0000000
+   add esp, 0xc0000000        ; 将栈指针同样映射到内核地址
 
-        mov eax, PAGE_DIR_TABLE_POS
-        mov cr3, eax
+   ; 把页目录地址赋给cr3
+   mov eax, PAGE_DIR_TABLE_POS
+   mov cr3, eax
 
-        mov eax, cr0
-        or eax, 0x80000000
-        mov cr0, eax
+   ; 打开cr0的pg位(第31位)
+   mov eax, cr0
+   or eax, 0x80000000
+   mov cr0, eax
 
-        lgdt [gdt_ptr]
+   ;在开启分页后,用gdt新的地址重新加载
+   lgdt [gdt_ptr]             ; 重新加载
 
-        jmp SELECTOR_CODE:enter_kernal
-enter_kernal:
-        call kernal_init
-        mov esp, 0xc009f000
-        jmp KERNEL_ENTRY_POINT
-        
-        mov byte [gs:160], 'V'
-
-        jmp $
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;  此时不刷新流水线也没问题  ;;;;;;;;;;;;;;;;;;;;;;;;
+;由于一直处在32位下,原则上不需要强制刷新,经过实际测试没有以下这两句也没问题.
+;但以防万一，还是加上啦，免得将来出来莫句奇妙的问题.
+   jmp SELECTOR_CODE:enter_kernel	  ;强制刷新流水线,更新gdt
+enter_kernel:    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   call kernel_init
+   mov esp, 0xc009f000
+   jmp KERNEL_ENTRY_POINT                 ; 用地址0x1500访问测试，结果ok
 
 
-; 空间清零
-setup_page:
-        ; 首先把页目录占用空间清零
-        mov ecx, 4096
-        mov esi, 0
-.clear_page_dir:
-        mov byte [PAGE_DIR_TABLE_POS + esi], 0
-        inc esi ; 自加操作
-        loop .clear_page_dir
-; 创建页目录项
-.create_pde:
-        mov eax, PAGE_DIR_TABLE_POS ; 这里是实模式，写的都是真实地址
-        add eax, 0x1000  ; 此时，eax为第一个页表的位置及属性
-        mov ebx, eax
+;-----------------   将kernel.bin中的segment拷贝到编译的地址   -----------
+kernel_init:
+   xor eax, eax
+   xor ebx, ebx		;ebx记录程序头表地址
+   xor ecx, ecx		;cx记录程序头表中的program header数量
+   xor edx, edx		;dx 记录program header尺寸,即e_phentsize
 
-        ; 表示所有特权级都可访问
-        or eax, PG_US_U | PG_RW_W | PG_P
-        mov [PAGE_DIR_TABLE_POS + 0x0], eax ; eax是32位寄存器，页表目录项第0项，0x 0100 1000
-        mov [PAGE_DIR_TABLE_POS + 0xc00], eax ; 分别存入0和768项
-
-        sub eax, 0x1000
-        mov [PAGE_DIR_TABLE_POS + 4092], eax ; 在最后一个页目录项中写入页表自己的物理地址，目的是将来动态操作页表
-
-        ; 下面创建页表
-        mov ecx, 256 ; 1MB的低端内存
-        mov esi, 0
-        mov edx, PG_US_U | PG_RW_W | PG_P 
-.create_pte:
-        ; ebx上方已经赋值，指向第一个页表的地址
-        mov [ebx+esi*4], edx 
-        add edx, 4096 ; 每个页表1024个页表项，也就是4096byte，每个页表项4byte
-        inc esi 
-        loop .create_pte 
-
-
-        ; 创建内核其它页表的pde
-        mov eax, PAGE_DIR_TABLE_POS
-        add eax, 0x2000
-        or eax, PG_US_U | PG_RW_W | PG_P 
-        mov ebx, PAGE_DIR_TABLE_POS
-        mov ecx, 254
-        mov esi, 769
-.create_kernal_pde:
-        mov [ebx+esi*4], eax 
-        inc esi 
-        add eax, 0x1000
-        loop .create_kernal_pde
-        ret
-
-
-
-; mov eax, KERNAL_START_SECTOR
-; mov ebx, KERNAL_BIN_BASE_ADDR
-; mov ecx, 200
-; call rd_disk_m_32
-
-; these codes seem wrong?
-rd_disk_m_32:
-    mov esi,eax ;
-    mov di,cx
-
-    ; 设置要读取的扇区数
-    mov dx,0x1f2 ; primary通道sector count寄存器
-    mov al,cl ; cl就是cx的低位
-    out dx,al ; 内容写入目标端口
-    mov eax,esi ; 恢复eax寄存器
-
-    ; 写入LBA地址
-    mov dx,0x1f3
-    out dx,al
-
-    mov cl,8
-    shr eax,cl 
-    mov dx,0x1f4
-    out dx,al 
-
-    shr eax,cl 
-    mov dx,0x1f5
-    out dx,al 
-
-    shr eax,cl 
-    and al,0x0f ; &位运算
-    or al,0xe0 ; 1110,表示为lba模式
-    mov dx,0x1f6
-    out dx,al 
-
-    ; 0x1f7端口写入读命令，0x20
-    mov dx,0x1f7
-    mov al,0x20 
-    out dx,al
-
-    ;检测硬盘状态
-.not_ready:
-    nop
-    in al,dx 
-    and al,0x88 ; 看就绪位是否为1
-    cmp al,0x08 
-    jnz .not_ready ; 未准备好，循环等待
-
-    ; 从0x1f0读取数据
-    mov ax,di ; 扇区数
-    mov dx,256
-    mul dx
-    mov cx,ax 
-
-    ; 每次读入16byte，则可以计算出需要的空间
-
-    mov dx,0x1f0
-
-.go_on_read:
-    in ax,dx
-    mov [ebx],ax ; 向内存写入数据
-    add ebx,2
-    loop .go_on_read
-
-    mov byte [gs:550], 'W' ; successfully writes it!
-
-    ret
-
-
-kernal_init:
-        xor eax, eax
-        xor ebx, ebx
-        xor ecx, ecx 
-        xor edx, edx 
-
-        ; what is the simulate thing of this computer?
-
-        mov dx, [KERNEL_BIN_BASE_ADDR + 42] ;the size of program header
-        mov ebx, [KERNEL_BIN_BASE_ADDR + 28] ;e_phoff
-        
-        add ebx, KERNEL_BIN_BASE_ADDR
-        mov cx, [KERNEL_BIN_BASE_ADDR + 44] ;e_phnum how many program headers?
+   mov dx, [KERNEL_BIN_BASE_ADDR + 42]	  ; 偏移文件42字节处的属性是e_phentsize,表示program header大小
+   mov ebx, [KERNEL_BIN_BASE_ADDR + 28]   ; 偏移文件开始部分28字节的地方是e_phoff,表示第1 个program header在文件中的偏移量
+					  ; 其实该值是0x34,不过还是谨慎一点，这里来读取实际值
+   add ebx, KERNEL_BIN_BASE_ADDR
+   mov cx, [KERNEL_BIN_BASE_ADDR + 44]    ; 偏移文件开始部分44字节的地方是e_phnum,表示有几个program header
 .each_segment:
-        cmp byte [ebx + 0], PT_NULL
-        je .PT_NULL
+   cmp byte [ebx + 0], PT_NULL		  ; 若p_type等于 PT_NULL,说明此program header未使用。
+   je .PTNULL
 
-        push dword [ebx+16] ;p_filesizes
+   ;为函数memcpy压入参数,参数是从右往左依然压入.函数原型类似于 memcpy(dst,src,size)
+   push dword [ebx + 16]		  ; program header中偏移16字节的地方是p_filesz,压入函数memcpy的第三个参数:size
+   mov eax, [ebx + 4]			  ; 距程序头偏移量为4字节的位置是p_offset
+   add eax, KERNEL_BIN_BASE_ADDR	  ; 加上kernel.bin被加载到的物理地址,eax为该段的物理地址
+   push eax				  ; 压入函数memcpy的第二个参数:源地址
+   push dword [ebx + 8]			  ; 压入函数memcpy的第一个参数:目的地址,偏移程序头8字节的位置是p_vaddr，这就是目的地址
+   call mem_cpy				  ; 调用mem_cpy完成段复制
+   add esp,12				  ; 清理栈中压入的三个参数
+.PTNULL:
+   add ebx, edx				  ; edx为program header大小,即e_phentsize,在此ebx指向下一个program header 
+   loop .each_segment
+   ret
 
-        mov eax, [ebx+4]
-        add eax, KERNEL_BIN_BASE_ADDR
-        push eax                ;src 
-        push dword [ebx+8]      ;dst 
+;----------  逐字节拷贝 mem_cpy(dst,src,size) ------------
+;输入:栈中三个参数(dst,src,size)
+;输出:无
+;---------------------------------------------------------
+mem_cpy:		      
+   cld
+   push ebp
+   mov ebp, esp
+   push ecx		   ; rep指令用到了ecx，但ecx对于外层段的循环还有用，故先入栈备份
+   mov edi, [ebp + 8]	   ; dst
+   mov esi, [ebp + 12]	   ; src
+   mov ecx, [ebp + 16]	   ; size
+   rep movsb		   ; 逐字节拷贝
 
-        call mem_cpy
-        add esp, 12 ;clear all variables in stack
-.PT_NULL:
-        add ebx, edx
-        loop .each_segment
-        ret
+   ;恢复环境
+   pop ecx		
+   pop ebp
+   ret
 
-mem_cpy:
-        cld
-        push ebp
-        mov ebp, esp 
-        push ecx 
 
-        mov edi, [ebp+8] ;dst
-        mov esi, [ebp+12] ;src
-        mov ecx, [ebp+16] ;size
-        rep movsb
+;-------------   创建页目录及页表   ---------------
+setup_page:
+;先把页目录占用的空间逐字节清0
+   mov ecx, 4096
+   mov esi, 0
+.clear_page_dir:
+   mov byte [PAGE_DIR_TABLE_POS + esi], 0
+   inc esi
+   loop .clear_page_dir
 
-        pop ecx 
-        pop ebp
-        ret 
+;开始创建页目录项(PDE)
+.create_pde:				     ; 创建Page Directory Entry
+   mov eax, PAGE_DIR_TABLE_POS
+   add eax, 0x1000 			     ; 此时eax为第一个页表的位置及属性
+   mov ebx, eax				     ; 此处为ebx赋值，是为.create_pte做准备，ebx为基址。
 
-;because page table map is wrong, we can't get enough data here.dam!
-; in 2022.1.2 14:17, i successfully sovle this question and problem
+;   下面将页目录项0和0xc00都存为第一个页表的地址，
+;   一个页表可表示4MB内存,这样0xc03fffff以下的地址和0x003fffff以下的地址都指向相同的页表，
+;   这是为将地址映射为内核地址做准备
+   or eax, PG_US_U | PG_RW_W | PG_P	     ; 页目录项的属性RW和P位为1,US为1,表示用户属性,所有特权级别都可以访问.
+   mov [PAGE_DIR_TABLE_POS + 0x0], eax       ; 第1个目录项,在页目录表中的第1个目录项写入第一个页表的位置(0x101000)及属性(3)
+   mov [PAGE_DIR_TABLE_POS + 0xc00], eax     ; 一个页表项占用4字节,0xc00表示第768个页表占用的目录项,0xc00以上的目录项用于内核空间,
+					     ; 也就是页表的0xc0000000~0xffffffff共计1G属于内核,0x0~0xbfffffff共计3G属于用户进程.
+   sub eax, 0x1000
+   mov [PAGE_DIR_TABLE_POS + 4092], eax	     ; 使最后一个目录项指向页目录表自己的地址
+
+;下面创建页表项(PTE)
+   mov ecx, 256				     ; 1M低端内存 / 每页大小4k = 256
+   mov esi, 0
+   mov edx, PG_US_U | PG_RW_W | PG_P	     ; 属性为7,US=1,RW=1,P=1
+.create_pte:				     ; 创建Page Table Entry
+   mov [ebx+esi*4],edx			     ; 此时的ebx已经在上面通过eax赋值为0x101000,也就是第一个页表的地址 
+   add edx,4096
+   inc esi
+   loop .create_pte
+
+;创建内核其它页表的PDE
+   mov eax, PAGE_DIR_TABLE_POS
+   add eax, 0x2000 		     ; 此时eax为第二个页表的位置
+   or eax, PG_US_U | PG_RW_W | PG_P  ; 页目录项的属性RW和P位为1,US为0
+   mov ebx, PAGE_DIR_TABLE_POS
+   mov ecx, 254			     ; 范围为第769~1022的所有目录项数量
+   mov esi, 769
+.create_kernel_pde:
+   mov [ebx+esi*4], eax
+   inc esi
+   add eax, 0x1000
+   loop .create_kernel_pde
+   ret
+
+
+;-------------------------------------------------------------------------------
+			   ;功能:读取硬盘n个扇区
+rd_disk_m_32:	   
+;-------------------------------------------------------------------------------
+							 ; eax=LBA扇区号
+							 ; ebx=将数据写入的内存地址
+							 ; ecx=读入的扇区数
+      mov esi,eax	   ; 备份eax
+      mov di,cx		   ; 备份扇区数到di
+;读写硬盘:
+;第1步：设置要读取的扇区数
+      mov dx,0x1f2
+      mov al,cl
+      out dx,al            ;读取的扇区数
+
+      mov eax,esi	   ;恢复ax
+
+;第2步：将LBA地址存入0x1f3 ~ 0x1f6
+
+      ;LBA地址7~0位写入端口0x1f3
+      mov dx,0x1f3                       
+      out dx,al                          
+
+      ;LBA地址15~8位写入端口0x1f4
+      mov cl,8
+      shr eax,cl
+      mov dx,0x1f4
+      out dx,al
+
+      ;LBA地址23~16位写入端口0x1f5
+      shr eax,cl
+      mov dx,0x1f5
+      out dx,al
+
+      shr eax,cl
+      and al,0x0f	   ;lba第24~27位
+      or al,0xe0	   ; 设置7～4位为1110,表示lba模式
+      mov dx,0x1f6
+      out dx,al
+
+;第3步：向0x1f7端口写入读命令，0x20 
+      mov dx,0x1f7
+      mov al,0x20                        
+      out dx,al
+
+;;;;;;; 至此,硬盘控制器便从指定的lba地址(eax)处,读出连续的cx个扇区,下面检查硬盘状态,不忙就能把这cx个扇区的数据读出来
+
+;第4步：检测硬盘状态
+  .not_ready:		   ;测试0x1f7端口(status寄存器)的的BSY位
+      ;同一端口,写时表示写入命令字,读时表示读入硬盘状态
+      nop
+      in al,dx
+      and al,0x88	   ;第4位为1表示硬盘控制器已准备好数据传输,第7位为1表示硬盘忙
+      cmp al,0x08
+      jnz .not_ready	   ;若未准备好,继续等。
+
+;第5步：从0x1f0端口读数据
+      mov ax, di	   ;以下从硬盘端口读数据用insw指令更快捷,不过尽可能多的演示命令使用,
+			   ;在此先用这种方法,在后面内容会用到insw和outsw等
+
+      mov dx, 256	   ;di为要读取的扇区数,一个扇区有512字节,每次读入一个字,共需di*512/2次,所以di*256
+      mul dx
+      mov cx, ax	   
+      mov dx, 0x1f0
+  .go_on_read:
+      in ax,dx		
+      mov [ebx], ax
+      add ebx, 2
+			  ; 由于在实模式下偏移地址为16位,所以用bx只会访问到0~FFFFh的偏移。
+			  ; loader的栈指针为0x900,bx为指向的数据输出缓冲区,且为16位，
+			  ; 超过0xffff后,bx部分会从0开始,所以当要读取的扇区数过大,待写入的地址超过bx的范围时，
+			  ; 从硬盘上读出的数据会把0x0000~0xffff的覆盖，
+			  ; 造成栈被破坏,所以ret返回时,返回地址被破坏了,已经不是之前正确的地址,
+			  ; 故程序出会错,不知道会跑到哪里去。
+			  ; 所以改为ebx代替bx指向缓冲区,这样生成的机器码前面会有0x66和0x67来反转。
+			  ; 0X66用于反转默认的操作数大小! 0X67用于反转默认的寻址方式.
+			  ; cpu处于16位模式时,会理所当然的认为操作数和寻址都是16位,处于32位模式时,
+			  ; 也会认为要执行的指令是32位.
+			  ; 当我们在其中任意模式下用了另外模式的寻址方式或操作数大小(姑且认为16位模式用16位字节操作数，
+			  ; 32位模式下用32字节的操作数)时,编译器会在指令前帮我们加上0x66或0x67，
+			  ; 临时改变当前cpu模式到另外的模式下.
+			  ; 假设当前运行在16位模式,遇到0X66时,操作数大小变为32位.
+			  ; 假设当前运行在32位模式,遇到0X66时,操作数大小变为16位.
+			  ; 假设当前运行在16位模式,遇到0X67时,寻址方式变为32位寻址
+			  ; 假设当前运行在32位模式,遇到0X67时,寻址方式变为16位寻址.
+
+      loop .go_on_read
+      ret

@@ -68,11 +68,15 @@ static void general_intr_handler(uint8_t vec_nr) {
     if(vec_nr == 0x27 || vec_nr == 0x2f) {
         return;  // two interrupt vector which don't need to consider
     }
-    put_str("int vector : 0x2");
-    char tmp = (char)(vec_nr + 'a');
+
+    //show the interrupt information here
+
+    
+    // put_str("int vector : 0x2");
+    // char tmp = (char)(vec_nr + 'a');
     // put_char(tmp);
     // put_int(vec_nr);
-    put_char('\n');
+    // put_char('\n');
 }
 
 static void exception_init(void) {
