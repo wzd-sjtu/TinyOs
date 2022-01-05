@@ -7,6 +7,14 @@ Written in C and a little assembly language?
 
 Written Order is below:
 
-BIOS->MBR->Loader->RealMode->GDT->ProtectMode->PageTable->Printf->Interrupt->MemoryManageSystem->Thread->Lock->IOSystem->UserProcess->SystemCall->DiskDriver->FileSystem->Shell->Complete ☺☺☺☺☺☺☺
+BIOS->MBR->Loader->RealMode->GDT->
 
-now i am near the load kernal, i haven't begin write kernal in C
+ProtectMode->PageTable->Printf->Interrupt->MemoryManageSystem->
+
+Thread->Lock->IOSystem->UserProcess->SystemCall->
+
+DiskDriver->FileSystem->Shell->Complete 
+
+☺☺☺☺☺☺☺
+
+now i am near the Thread, i have began to write kernal in C
