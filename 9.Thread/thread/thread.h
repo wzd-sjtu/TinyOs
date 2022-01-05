@@ -86,11 +86,12 @@ struct task_struct {
     struct list_elem all_list_tag;
 
     uint32_t* pdgir; // 页表虚拟地址
-    
+
     uint32_t stack_magic; // 用于检测栈溢出
 };
 
 struct task_struct* thread_start(char* name, int prio, \
             thread_func function, void* func_arg);
-
+struct task_struct* running_thread();
+void thread_init(void);
 #endif

@@ -4,13 +4,16 @@
 #include "global.h"
 #include "memory.h"
 #include "interrupt.h"
+#include "debug.h"
 
 #define PG_SIZE 4096
 
+
+static struct list_elem* thread_tag;
 struct task_struct* main_thread; // 主线程
 struct list thread_ready_list; //就绪队列
 struct list thread_all_list; //所有线程队列
-static struct list_elem* thread_tag;
+
 
 struct task_struct* running_thread() {
     uint32_t esp;
@@ -41,7 +44,7 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
         pthread->status = TASK_RUNNING;
     }
     else {
-        pthread->statuss = TASK_READY;
+        pthread->status = TASK_READY;
     }
 
     pthread->status = TASK_RUNNING;
@@ -87,6 +90,15 @@ static void make_main_thread(void) {
     main_thread = running_thread();
     init_thread(main_thread, "main", 31);
 
-    ASSERT(!elem_find(&thread_all_list, &main_thread->all_list_tag))；
+    ASSERT(!elem_find(&thread_all_list, &main_thread->all_list_tag));
     list_append(&thread_all_list, &main_thread->all_list_tag);
+}
+
+void thread_init(void) {
+    put_str("\nthread_init start!\n");
+    list_init(&thread_ready_list);
+    list_init(&thread_all_list);
+    make_main_thread(); // main thread initializing
+
+    put_str("\nthread_init end!\n");
 }

@@ -2,7 +2,12 @@
 #include "stdint.h"
 #include "global.h"
 #include "io.h"
-
+#include "print.h"
+#include "thread.h"
+#include "debug.h"
+#include "list.h"
+#include "switch.h"
+// add an extra element of almost everything, right.
 #define IDT_DESC_CNT 0x21
 
 #define PIC_M_CTRL 0x20
@@ -13,6 +18,13 @@
 
 #define EFLAGS_IF 0x00000200 // eflags if=1 forbid interrupt
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" : "=g" (EFLAG_VAR)) // inline assemble
+
+
+// extern variables
+static struct list_elem* thread_tag;
+extern struct task_struct* main_thread; // 主线程
+extern struct list thread_ready_list; //就绪队列
+extern struct list thread_all_list; //所有线程队列
 
 static void pic_init(void) {
     outb(PIC_M_CTRL, 0x11);
@@ -69,6 +81,31 @@ static void general_intr_handler(uint8_t vec_nr) {
         return;  // two interrupt vector which don't need to consider
     }
 
+    // clean the screen and get enough information
+    set_cursor(0);
+    int cursor_pos = 0;
+
+    while(cursor_pos<320) {
+        put_char(' ');
+        cursor_pos++;
+    }
+    set_cursor(0);
+
+    put_str("\n!!!!    exception message begin    !!!!\n");
+    set_cursor(88); // set to second line and second row
+
+    put_str(intr_name[vec_nr]); // print interrupt vector information
+
+    // Pagefault, print some useful information
+    if(vec_nr == 14) {
+        int page_fault_vaddr = 0;
+        asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr)); // store virtual address
+
+        put_str("\n page fault addr is");put_int(page_fault_vaddr);
+        put_str("\n    exception message end    \n");
+
+        while(1);  // the interrupt is closed. which lead the system to always move silently
+    } 
     //show the interrupt information here
 
     
@@ -157,4 +194,34 @@ enum intr_status intr_get_status(void) {
 }
 enum intr_status intr_set_status(enum intr_status status) {
     return status & INTR_ON? intr_enable() : intr_disable();
+}
+
+void register_handler(uint8_t vector_no, intr_handler function) {
+    idt_table[vector_no] = function; // point to function pointer
+}
+
+// now the schedule is below, it is very exciting!
+
+void schedule() {
+    // ensure that the interrupt is closed
+    ASSERT(intr_get_status() == INTR_OFF);
+
+    struct task_struct* cur = running_thread();
+
+    if(cur->status == TASK_RUNNING) {
+        ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
+        list_append(&thread_ready_list, &cur->general_tag);
+        cur->ticks = cur->priority;
+        cur->status = TASK_READY;
+    }
+    else {
+        // not need to add to the queue
+    }
+
+    ASSERT(!list_empty(&thread_ready_list));
+    thread_tag = list_pop(&thread_ready_list);
+    struct task_struct* next = elem2entry(struct task_struct, general_tag, thread_tag);
+    next->status = TASK_RUNNING;
+
+    switch_to(cur, next);
 }
