@@ -2,6 +2,7 @@
 #define __THREAD_THREAD_H
 
 #include "stdint.h"
+#include "list.h"
 
 typedef void thread_func(void*);
 
@@ -72,8 +73,20 @@ struct thread_stack {
 struct task_struct {
     uint32_t* self_kstack;
     enum task_status status;
-    uint8_t priority;
     char name[6];
+    uint8_t priority;
+    uint8_t ticks; // 滴答数
+
+    // 已经运行的滴答数目
+    uint32_t elapsed_ticks;
+
+    // 在一般队列中的节点tag
+    struct list_elem general_tag;
+
+    struct list_elem all_list_tag;
+
+    uint32_t* pdgir; // 页表虚拟地址
+    
     uint32_t stack_magic; // 用于检测栈溢出
 };
 

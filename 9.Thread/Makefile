@@ -12,13 +12,14 @@ LDFLAGS = -m elf_i386 -Ttext 0xc0001500 -e main
 OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 	$(BUILD_DIR)/timer.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o \
 	$(BUILD_DIR)/debug.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/string.o \
-	$(BUILD_DIR)/bitmap.o $(BUILD_DIR)/thread.o
+	$(BUILD_DIR)/bitmap.o $(BUILD_DIR)/thread.o $(BUILD_DIR)/list.o
 
 ALL_DEPENDENCIES_H = device/timer.h \
 					kernel/debug.h kernel/global.h kernel/init.h kernel/interrupt.h \
 	kernel/memory.h \
 					lib/stdint.h lib/string.h \
-					lib/kernel/bitmap.h lib/kernel/io.h lib/kernel/print.h
+					lib/kernel/bitmap.h lib/kernel/io.h lib/kernel/print.h \
+	lib/kernel/list.h
 ## compile for c code ##
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
         lib/stdint.h kernel/init.h kernel/memory.h thread/thread.h
@@ -53,6 +54,9 @@ $(BUILD_DIR)/memory.o: kernel/memory.c kernel/memory.h lib/stdint.h \
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/thread.o: thread/thread.c $(ALL_DEPENDENCIES_H)
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/list.o: lib/kernel/list.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
 ## compile for assemb code ##
