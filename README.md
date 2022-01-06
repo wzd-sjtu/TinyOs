@@ -10,3 +10,5 @@ Written Order is below:
 BIOS->MBR->Loader->true Computer System
 
 now i am near the load kernal, i haven't begin write kernal in C
+
+今天很高兴，华为开了15级，不用去春招啦！
