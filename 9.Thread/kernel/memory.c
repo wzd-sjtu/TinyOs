@@ -32,9 +32,10 @@ struct pool kernel_pool, user_pool;
 // 虚拟地址池
 struct virtual_addr kernel_vaddr;
 
+// uint32_t used_mem = page_table_size + 0x100000;
 static void mem_pool_init(uint32_t all_mem) {
     put_str("  men_pool_init start \n");
-    uint32_t page_table_size = PG_SIZE * 256;
+    uint32_t page_table_size = PG_SIZE * 256; // avoid page table's size
 
     uint32_t used_mem = page_table_size + 0x100000; // low 1MB are all used
     uint32_t free_mem = all_mem - used_mem;
@@ -99,12 +100,13 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
         while(cnt<pg_cnt) {
             bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
             // every bit for a page!
-            vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start*PG_SIZE;
         }
+        vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start*PG_SIZE;
     }
     // other situation is used for user's process
     else {
-
+        return (void*)vaddr_start; // virtual memory attribute
+        // let a set of code run together is much too difficult
     }
 
 
@@ -113,8 +115,9 @@ static void* vaddr_get(enum pool_flags pf, uint32_t pg_cnt) {
 // return v_addr's pte virtual address
 
 uint32_t* pte_ptr(uint32_t vaddr) {
-    uint32_t* pte = (uint32_t*)(0xffc00000 + ((vaddr & 0xffc00000) >> 10) + \
-                                PTE_IDX(vaddr)*4);
+    uint32_t* pte = (uint32_t*)(0xffc00000 + \
+        ((vaddr & 0xffc00000) >> 10) + \
+        PTE_IDX(vaddr)*4);
     return pte;
 
 }
@@ -125,6 +128,7 @@ uint32_t* pde_ptr(uint32_t vaddr) {
     return pde;
 }
 
+// this is the real situation for everyone
 // distribution a physical page in physical pool
 static void* palloc(struct pool* m_pool) {
     int bit_idx = bitmap_scan(&m_pool->pool_bitmap, 1);
@@ -143,11 +147,15 @@ static void page_table_add(void* _vaddr, void* _page_phyaddr) {
     uint32_t* pte = pte_ptr(vaddr);
     uint32_t* pde = pde_ptr(vaddr);
 
+    // memory control need to be rethink of.
     if(*pde & 0x00000001) {
         // in this situation, all pte should present
-        ASSERT(!(*pte & 0x00000001));
+        // ASSERT(!(*pte & 0x00000001));
+        put_str("\npte num is 0x");
+        put_int(*pte);put_str("\n");
+        ASSERT((*pte & 0x00000001)==0);
 
-        if(!(*pte & 0x00000001)) {
+        if((*pte & 0x00000001)==0) {
             *pte = (page_phyaddr | PG_US_U | PG_RW_W | PG_P_1);
         }
         else {

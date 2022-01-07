@@ -102,10 +102,11 @@ static void general_intr_handler(uint8_t vec_nr) {
         asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr)); // store virtual address
 
         put_str("\n page fault addr is");put_int(page_fault_vaddr);
-        put_str("\n    exception message end    \n");
+    }
 
-        while(1);  // the interrupt is closed. which lead the system to always move silently
-    } 
+    put_str("\n    exception message end    \n");
+
+    while(1);  // the interrupt is closed. which lead the system to always move silently
     //show the interrupt information here
 
     
@@ -202,6 +203,7 @@ void register_handler(uint8_t vector_no, intr_handler function) {
 
 // now the schedule is below, it is very exciting!
 
+/*
 void schedule() {
     // ensure that the interrupt is closed
     ASSERT(intr_get_status() == INTR_OFF);
@@ -225,3 +227,4 @@ void schedule() {
 
     switch_to(cur, next);
 }
+*/

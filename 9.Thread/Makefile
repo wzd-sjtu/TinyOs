@@ -23,35 +23,28 @@ ALL_DEPENDENCIES_H = device/timer.h \
 	lib/kernel/list.h \
 					thread/thread.h thread/switch.h
 ## compile for c code ##
-$(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
-        lib/stdint.h kernel/init.h kernel/memory.h thread/thread.h
+$(BUILD_DIR)/main.o: kernel/main.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c kernel/init.h lib/kernel/print.h \
-        lib/stdint.h kernel/interrupt.h device/timer.h kernel/memory.h
+$(BUILD_DIR)/init.o: kernel/init.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/interrupt.h \
-        lib/stdint.h kernel/global.h lib/kernel/io.h lib/kernel/print.h
+$(BUILD_DIR)/interrupt.o: kernel/interrupt.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/timer.o: device/timer.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h \
-        lib/kernel/print.h lib/stdint.h kernel/interrupt.h
+$(BUILD_DIR)/debug.o: kernel/debug.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c lib/kernel/bitmap.h lib/stdint.h lib/string.h \
-	lib/kernel/print.h kernel/interrupt.h kernel/debug.h
+$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/string.o: lib/string.c lib/string.h kernel/global.h kernel/debug.h \
-	lib/stdint.h
+$(BUILD_DIR)/string.o: lib/string.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/memory.o: kernel/memory.c kernel/memory.h lib/stdint.h \
-	lib/kernel/print.h kernel/debug.h lib/string.h
+$(BUILD_DIR)/memory.o: kernel/memory.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/thread.o: thread/thread.c $(ALL_DEPENDENCIES_H)
@@ -61,12 +54,12 @@ $(BUILD_DIR)/list.o: lib/kernel/list.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 
 ## compile for assemb code ##
-$(BUILD_DIR)/kernel.o: kernel/kernel.S
+$(BUILD_DIR)/kernel.o: kernel/kernel.S $(ALL_DEPENDENCIES_H)
 	$(AS) $(ASFLAGS) $< -o $@
-$(BUILD_DIR)/print.o: lib/kernel/print.S
+$(BUILD_DIR)/print.o: lib/kernel/print.S $(ALL_DEPENDENCIES_H)
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/switch.o: thread/switch.S
+$(BUILD_DIR)/switch.o: thread/switch.S $(ALL_DEPENDENCIES_H)
 	$(AS) $(ASFLAGS) $< -o $@
 
 

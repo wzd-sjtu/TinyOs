@@ -2,26 +2,11 @@
 #include "init.h"
 #include "debug.h"
 #include "memory.h"
-// #include "thread.h"
+#include "thread.h"
 
 void k_thread_a(void*);
-
+void k_thread_b(void*);
 int main(void) {
-    
-    /*
-    put_char('w');
-    put_char('z');
-    put_char('d');
-    put_char(' ');
-    put_char('h');
-    put_char('a');
-    put_char('p');
-    put_char('p');
-    put_char('y');
-    put_char('!');
-    put_char('\n');
-    put_char('w');
-    */
 
     put_str("wzd is handsome!\nwzd is also beautiful!\n");
     init_all();
@@ -39,12 +24,17 @@ int main(void) {
     // by now, we eventually finish the PCB structure.
 
     // test the thread
+    put_str("\nbegin the thread!\n");
     thread_start("k_thread_a", 31, k_thread_a, "argA ");
-    thread_start("k_thread_b", 8, k_thread_a, "argB ");
+    thread_start("k_thread_b", 8, k_thread_b, "argB ");
+
+    put_str("\nend the thread!\n");
 
     intr_enable();
     while(1) {
+        intr_disable();
         put_str("Main! ");
+        intr_enable();
     }
     while(1);
     return 0;
@@ -53,6 +43,16 @@ int main(void) {
 void k_thread_a(void* arg) {
     char* para = arg;
     while(1) {
+        intr_disable();
         put_str(arg);
+        intr_enable();
+    }
+}
+void k_thread_b(void* arg) {
+    char* para = arg;
+    while(1) {
+        intr_disable();
+        put_str(arg);
+        intr_enable();
     }
 }

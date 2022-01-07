@@ -63,6 +63,7 @@ struct thread_stack {
     uint32_t esi;
     void (*eip)(thread_func* func, void* func_arg);
 
+    // 仅供第一次被调度上CPU时使用的函数
     void (*unused_retaddr);
     thread_func* function;
     void* func_arg;
