@@ -14,9 +14,9 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 	$(BUILD_DIR)/debug.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/string.o \
 	$(BUILD_DIR)/bitmap.o $(BUILD_DIR)/thread.o $(BUILD_DIR)/list.o \
 	$(BUILD_DIR)/switch.o $(BUILD_DIR)/sync.o $(BUILD_DIR)/console.o \
-	$(BUILD_DIR)/keyboard.o
+	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o
 
-ALL_DEPENDENCIES_H = device/timer.h device/console.h device/keyboard.h\
+ALL_DEPENDENCIES_H = device/timer.h device/console.h device/keyboard.h device/ioqueue.h\
 					kernel/debug.h kernel/global.h kernel/init.h kernel/interrupt.h \
 	kernel/memory.h \
 					lib/stdint.h lib/string.h \
@@ -59,8 +59,11 @@ $(BUILD_DIR)/list.o: lib/kernel/list.c $(ALL_DEPENDENCIES_H)
 
 $(BUILD_DIR)/console.o: device/console.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
-	
+
 $(BUILD_DIR)/keyboard.o: device/keyboard.c $(ALL_DEPENDENCIES_H)
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/ioqueue.o: device/ioqueue.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@
 ## compile for assemb code ##
 $(BUILD_DIR)/kernel.o: kernel/kernel.S $(ALL_DEPENDENCIES_H)
