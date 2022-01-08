@@ -21,11 +21,11 @@ int ioq_full(struct ioqueue* ioq) {
 static int ioq_empty(struct ioqueue* ioq) {
     return ioq->head==ioq->tail;
 }
-static void ioq_wait(struct ioqueue** waiter) {
+static void ioq_wait(struct task_struct** waiter) {
     *waiter = running_thread();
     thread_block(TASK_BLOCKED);
 }
-static void wakeup(struct ioqueue** waiter) {
+static void wakeup(struct task_struct** waiter) {
     thread_unblock(*waiter);
     *waiter = NULL; // only blocked. will be produced?
 }

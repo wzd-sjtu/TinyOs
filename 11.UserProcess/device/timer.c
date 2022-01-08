@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "thread.h"
 #include "debug.h"
+#include "console.h"
 
 #define IRQ0_FREQUENCY	   100
 #define INPUT_FREQUENCY	   1193180
@@ -39,6 +40,7 @@ static void intr_timer_handler(void) {
    cur_thread->elapsed_ticks++;	  // 记录此线程占用的cpu时间嘀
    ticks++;	  //从内核第一次处理时间中断后开始至今的滴哒数,内核态和用户态总共的嘀哒数
 
+   console_put_str("again a timer!  ");
    if (cur_thread->ticks == 0) {	  // 若进程时间片用完就开始调度新的进程上cpu
       schedule(); 
    } else {				  // 将当前进程的时间片-1

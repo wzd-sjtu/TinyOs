@@ -80,4 +80,15 @@ struct gdt_desc {
 #define PG_SIZE 4096
 #endif
 
+#define EFLAGS_MBS (1<<1)
+#define EFLAGS_IF_1 (1<<9)
+#define EFLAGS_IF_0 0
+#define EFLAGS_IOPL_3 (3 << 12) 
+// just some bits
+#define EFLAGS_IOPL_0 (0 << 12)
+
+#define NULL ((void*)0)
+#define DIV_ROUND_UP(X, STEP) ((X + STEP -1)/ (STEP)) 
+// a macro for tied calculation
+
 #endif
