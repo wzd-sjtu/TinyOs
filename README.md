@@ -17,4 +17,4 @@ DiskDriver->FileSystem->Shell->Complete
 
 ☺☺☺☺☺☺☺
 
-now i am near the Thread, i have began to write kernal in C
+now i am in the SystemCall, i have began to write kernal in C
