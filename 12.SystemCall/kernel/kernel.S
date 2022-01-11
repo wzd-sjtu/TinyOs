@@ -94,3 +94,30 @@ VECTOR 0x2c,ZERO	;ps/2鼠标
 VECTOR 0x2d,ZERO	;fpu浮点单元异常
 VECTOR 0x2e,ZERO	;硬盘
 VECTOR 0x2f,ZERO	;保留
+
+[bits 32]
+extern syscall_table
+section .text
+global syscall_handler
+
+syscall_handler:
+   push 0
+
+   push ds
+   push es
+   push fs
+   push gs
+   pushad
+
+   push 0x80  ; 0x80 interrupt vector ;也就是中断向量
+
+   push edx ; third parameter 
+   push ecx ; second parameter
+   push ebx ; first parameter
+
+   call [syscall_table + eax*4] ; eax stores the child function number
+
+   add esp, 12
+
+   mov [esp + 4*8], eax ; let the return value cover the eax store places
+   jmp intr_exit ; recover the article
