@@ -53,3 +53,6 @@
 uint32_t getpid(void) {
     return _syscall0(SYS_GETPID); // make the SYS_GETPID syscall happened
 }
+uint32_t write(char* str) {
+   return _syscall1(SYS_WRITE, str); // transfer the code to the int 0x80 process.
+}

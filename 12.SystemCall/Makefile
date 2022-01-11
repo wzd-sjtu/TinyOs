@@ -15,13 +15,14 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
 	$(BUILD_DIR)/bitmap.o $(BUILD_DIR)/thread.o $(BUILD_DIR)/list.o \
 	$(BUILD_DIR)/switch.o $(BUILD_DIR)/sync.o $(BUILD_DIR)/console.o \
 	$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o $(BUILD_DIR)/tss.o \
-	$(BUILD_DIR)/process.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall-init.o
+	$(BUILD_DIR)/process.o $(BUILD_DIR)/syscall-init.o $(BUILD_DIR)/syscall.o \
+	$(BUILD_DIR)/stdio.o
 
 
 ALL_DEPENDENCIES_H = device/timer.h device/console.h device/keyboard.h device/ioqueue.h\
 					kernel/debug.h kernel/global.h kernel/init.h kernel/interrupt.h \
 	kernel/memory.h \
-					lib/stdint.h lib/string.h \
+					lib/stdint.h lib/string.h lib/stdio.h \
 					lib/kernel/bitmap.h lib/kernel/io.h lib/kernel/print.h \
 	lib/kernel/list.h \
 					thread/thread.h thread/sync.h \
@@ -82,6 +83,9 @@ $(BUILD_DIR)/syscall.o: lib/user/syscall.c $(ALL_DEPENDENCIES_H)
 
 $(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c $(ALL_DEPENDENCIES_H)
 	$(CC) $(CFLAGS) $< -o $@	
+
+$(BUILD_DIR)/stdio.o: lib/stdio.c $(ALL_DEPENDENCIES_H)
+	$(CC) $(CFLAGS) $< -o $@
 ## compile for assemb code ##
 $(BUILD_DIR)/kernel.o: kernel/kernel.S $(ALL_DEPENDENCIES_H)
 	$(AS) $(ASFLAGS) $< -o $@

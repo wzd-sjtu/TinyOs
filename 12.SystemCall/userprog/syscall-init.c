@@ -4,6 +4,7 @@
 #include "console.h"
 #include "string.h"
 #include "print.h"
+#include "string.h"
 
 #define syscall_nr 32
 typedef void* syscall;
@@ -14,9 +15,16 @@ uint32_t sys_getpid(void) {
     return running_thread()->pid;
 }
 
+uint32_t sys_write(char* str) {
+    console_put_str(str);
+    return strlen(str);
+}
+
 void syscall_init(void) {
+    // in the kernel mode, no need to satisfy the situation
     put_str("syscall_table init begin!\n");
     syscall_table[SYS_GETPID] = sys_getpid; // function pointer here, which is in fact a normal pointer
+    syscall_table[SYS_WRITE] = sys_write; // function of printf
     put_str("syscall_table init end!\n");
 }
 

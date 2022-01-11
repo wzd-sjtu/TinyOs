@@ -64,6 +64,7 @@ void u_prog_a(void) {
       // in fact, it is because getpid function's cover is not enough
 
       prog_a_pid = getpid();
+      printf("I am happy\n");
    //}
    while(1);
 }
@@ -73,6 +74,7 @@ void u_prog_b(void) {
    //while(1) {
       // console_put_str(" pid:0x");
       prog_b_pid = getpid();
+      printf("i am happy!");
    //}
    while(1);
 }
