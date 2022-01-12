@@ -18,3 +18,6 @@ DiskDriver->FileSystem->Shell->Complete
 ☺☺☺☺☺☺☺
 
 now i am in the SystemCall, i have began to write kernal in C
+
+the code for the begining of bochs:
+bin/bochs -f bochsrc.disk

@@ -6,7 +6,7 @@ CC = gcc
 LD = ld
 LIB = -I lib/ -I lib/kernel -I lib/user -I kernel/ -I device/ -I thread/ -I userprog/
 ASFLAGS = -f elf32
-CFLAGS = $(LIB) -m32 -c -fno-builtin -fno-stack-protector
+CFLAGS = -Wall $(LIB) -m32 -c -fno-builtin -fno-stack-protector -W -Wstrict-prototypes -Wmissing-prototypes
 
 LDFLAGS = -m elf_i386 -Ttext 0xc0001500 -e main
 OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
@@ -29,71 +29,105 @@ ALL_DEPENDENCIES_H = device/timer.h device/console.h device/keyboard.h device/io
 					userprog/tss.h userprog/userprog.h userprog/process.h \
 					lib/user/syscall.h userprog/syscall-init.h
 
-## compile for c code ##
-$(BUILD_DIR)/main.o: kernel/main.c $(ALL_DEPENDENCIES_H)
+## compile for c code ## memory
+$(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
+        lib/stdint.h kernel/init.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/init.o: kernel/init.c kernel/init.h lib/kernel/print.h \
+        lib/stdint.h kernel/interrupt.h device/timer.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/interrupt.o: kernel/interrupt.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/interrupt.h \
+        lib/stdint.h kernel/global.h lib/kernel/io.h lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/timer.o: device/timer.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/stdint.h\
+        lib/kernel/io.h lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/debug.o: kernel/debug.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h \
+        lib/kernel/print.h lib/stdint.h kernel/interrupt.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/string.o: lib/string.c lib/string.h lib/stdint.h kernel/global.h \
+	lib/stdint.h kernel/debug.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/string.o: lib/string.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c lib/kernel/bitmap.h \
+    	kernel/global.h lib/stdint.h lib/string.h lib/stdint.h \
+     	lib/kernel/print.h kernel/interrupt.h kernel/debug.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/memory.o: kernel/memory.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/memory.o: kernel/memory.c kernel/memory.h lib/stdint.h lib/kernel/bitmap.h \
+   	kernel/global.h kernel/global.h kernel/debug.h lib/kernel/print.h \
+	lib/kernel/io.h kernel/interrupt.h lib/string.h lib/stdint.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/thread.o: thread/thread.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/kernel/list.h \
+    	kernel/global.h lib/string.h lib/stdint.h kernel/debug.h \
+     	kernel/interrupt.h lib/kernel/print.h kernel/memory.h \
+      	lib/kernel/bitmap.h userprog/process.h thread/thread.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/sync.o: thread/sync.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/list.o: lib/kernel/list.c lib/kernel/list.h kernel/global.h lib/stdint.h \
+        kernel/interrupt.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/list.o: lib/kernel/list.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/console.o: device/console.c device/console.h lib/stdint.h \
+        lib/kernel/print.h thread/sync.h lib/kernel/list.h kernel/global.h \
+     	thread/thread.h thread/thread.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/console.o: device/console.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/sync.o: thread/sync.c thread/sync.h lib/kernel/list.h kernel/global.h \
+       	lib/stdint.h thread/thread.h lib/string.h lib/stdint.h kernel/debug.h \
+	kernel/interrupt.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/keyboard.o: device/keyboard.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/keyboard.o: device/keyboard.c device/keyboard.h lib/kernel/print.h \
+        lib/stdint.h kernel/interrupt.h lib/kernel/io.h device/ioqueue.h \
+	thread/thread.h lib/kernel/list.h kernel/global.h thread/sync.h \
+      	thread/thread.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/ioqueue.o: device/ioqueue.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/ioqueue.o: device/ioqueue.c device/ioqueue.h lib/stdint.h thread/thread.h \
+        lib/kernel/list.h kernel/global.h thread/sync.h thread/thread.h kernel/interrupt.h \
+        kernel/debug.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/tss.o: userprog/tss.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/tss.o: userprog/tss.c userprog/tss.h thread/thread.h lib/stdint.h \
+    	lib/kernel/list.h kernel/global.h lib/string.h lib/stdint.h \
+     	lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/process.o: userprog/process.c $(ALL_DEPENDENCIES_H)
-	$(CC) $(CFLAGS) $< -o $@	
+$(BUILD_DIR)/process.o: userprog/process.c userprog/process.h thread/thread.h \
+    	lib/stdint.h lib/kernel/list.h kernel/global.h kernel/debug.h \
+     	kernel/memory.h lib/kernel/bitmap.h userprog/tss.h kernel/interrupt.h \
+      	lib/string.h lib/stdint.h
+	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall.o: lib/user/syscall.c $(ALL_DEPENDENCIES_H)
-	$(CC) $(CFLAGS) $< -o $@	
+$(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h
+	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c $(ALL_DEPENDENCIES_H)
-	$(CC) $(CFLAGS) $< -o $@	
+$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h \
+    	lib/stdint.h lib/user/syscall.h lib/kernel/print.h thread/thread.h \
+     	lib/kernel/list.h kernel/global.h lib/kernel/bitmap.h kernel/memory.h \
+	device/console.h
+	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/stdio.o: lib/stdio.c $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/stdint.h kernel/interrupt.h \
+    	lib/stdint.h kernel/global.h lib/string.h lib/user/syscall.h lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
 ## compile for assemb code ##
-$(BUILD_DIR)/kernel.o: kernel/kernel.S $(ALL_DEPENDENCIES_H)
-	$(AS) $(ASFLAGS) $< -o $@
-$(BUILD_DIR)/print.o: lib/kernel/print.S $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/kernel.o: kernel/kernel.S
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/switch.o: thread/switch.S $(ALL_DEPENDENCIES_H)
+$(BUILD_DIR)/print.o: lib/kernel/print.S
 	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/switch.o: thread/switch.S
+	$(AS) $(ASFLAGS) $< -o $@
+
 
 
 loader.bin:boot/loader.S 

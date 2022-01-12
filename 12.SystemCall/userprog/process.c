@@ -102,6 +102,8 @@ void process_execute(void* filename, char* name) {
    thread_create(thread, start_process, filename);
    thread->pgdir = create_page_dir();
    
+   block_desc_init(thread->u_block_desc); // init of user process
+
    enum intr_status old_status = intr_disable();
    ASSERT(!elem_find(&thread_ready_list, &thread->general_tag));
    list_append(&thread_ready_list, &thread->general_tag);

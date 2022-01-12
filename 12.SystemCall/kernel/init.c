@@ -2,8 +2,9 @@
 #include "print.h"
 #include "interrupt.h"
 #include "timer.h"
-#include "memory.h"
 #include "thread.h"
+#include "memory.h"
+
 #include "console.h"
 #include "keyboard.h"
 #include "tss.h"
