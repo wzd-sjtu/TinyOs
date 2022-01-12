@@ -2,13 +2,14 @@
 #include "stdint.h"
 #include "string.h"
 #include "syscall.h"
+#include "console.h"
 
 #ifndef NULL
 #define NULL 0
 #endif
 
 
-#define va_start(ap, v) ap = (va_list)(&v)
+#define va_start(ap, v) ap = (va_list)&v
 #define va_arg(ap, t) *((t*)(ap += 4))  // in fact, it is parameters in stack
 #define va_end(ap) ap=NULL // clear the ap
 
@@ -32,13 +33,16 @@ uint32_t vsprintf(char* str, const char* format, va_list ap) {
     char index_char = *index_ptr; 
     int32_t arg_int;
 
-    while(index_char) {
+    
+    while(index_char != '\0') {
+
         if(index_char != '%') { 
             *(buf_ptr++) = index_char;
             index_char = *(++index_ptr);
             continue;
         }
-        index_char = *(++index_ptr); //jump the %
+        index_char = *(++index_ptr);
+
         switch(index_char) {
             case 'x':
                 arg_int = va_arg(ap, int); // ap is the parameters in stack
@@ -46,7 +50,8 @@ uint32_t vsprintf(char* str, const char* format, va_list ap) {
                 index_char = *(++index_ptr);
                 break;
         }
-    } 
+    }
+
     return strlen(str);
 }
 
@@ -54,8 +59,12 @@ uint32_t vsprintf(char* str, const char* format, va_list ap) {
 uint32_t printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    char buf[1024] = {0};
-    vsprintf(buf, format, args); // how many number of stack is here?
+    char buf[1024] = {'\0'};
+    int loc = vsprintf(buf, format, args); // how many number of stack is here?
     va_end(args);
+    buf[loc] = '\0';
+    // buf[0] = '\n';buf[1] = '\0';
+
     return write(buf);  // firstly simulate the format, then printf it.
+    // return 1;
 }

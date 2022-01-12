@@ -16,6 +16,9 @@ uint32_t sys_getpid(void) {
 }
 
 uint32_t sys_write(char* str) {
+    int m = strlen(str);
+    console_put_int(m);
+    str[m] = '\0';
     console_put_str(str);
     return strlen(str);
 }
