@@ -4,7 +4,7 @@
 #include "console.h"
 #include "string.h"
 #include "print.h"
-#include "string.h"
+#include "memory.h"
 
 #define syscall_nr 32
 typedef void* syscall;
@@ -15,6 +15,7 @@ uint32_t sys_getpid(void) {
     return running_thread()->pid;
 }
 
+// someplace writes wronly! damm it!
 uint32_t sys_write(char* str) {
     int m = strlen(str);
     console_put_int(m);
@@ -28,6 +29,8 @@ void syscall_init(void) {
     put_str("syscall_table init begin!\n");
     syscall_table[SYS_GETPID] = sys_getpid; // function pointer here, which is in fact a normal pointer
     syscall_table[SYS_WRITE] = sys_write; // function of printf
+    syscall_table[SYS_MALLOC] = sys_malloc;
+    syscall_table[SYS_FREE] = sys_free;
     put_str("syscall_table init end!\n");
 }
 
